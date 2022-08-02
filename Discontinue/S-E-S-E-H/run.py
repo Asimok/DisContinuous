@@ -55,6 +55,7 @@ def train(args):
     model = QuestionAnswering.from_pretrained(args.modelPath, from_tf=False, config=config)
     # model = QuestionAnswering.from_pretrained(r"/data2/wangbingchao/output/DisContinuous/BIO/epoch-2/", from_tf=False, config=config)
     model.to(args.device)
+    model.train()
 
     args.batch_size = args.per_gpu_batch_size * max(1, args.n_gpu)
     train_sampler = RandomSampler(dataset)
@@ -151,7 +152,6 @@ def train(args):
         test(args, model, savedir="epoch-{}".format(epoch))
 
 
-
 def test(args, model=None, savedir=""):
     logger.info("***** Prepare for Test *****")
     logger.info("Load dataset from file %s ...", args.testFile)
@@ -167,7 +167,7 @@ def test(args, model=None, savedir=""):
         model.to(args.device)
         if args.n_gpu > 1 and not isinstance(model, torch.nn.DataParallel):
             model = torch.nn.DataParallel(model)
-
+    model.eval()
     logger.info("***** Running test *****")
     logger.info("Num examples = %d", len(dataset))
     logger.info("Batch size = %d", args.batch_size)

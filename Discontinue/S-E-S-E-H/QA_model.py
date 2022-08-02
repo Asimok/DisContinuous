@@ -57,8 +57,8 @@ class QuestionAnswering(BertPreTrainedModel):
         super().__init__(config)
         self.bert = BertModel(config, add_pooling_layer=False)
         # 多头attention
-        self.Attention = MultiHeadAttention(768, 768, 768, 2)
-        # self.AttentionSE = nn.MultiheadAttention(config.hidden_size, 2)
+        self.Attention = MultiHeadAttention(768, 768, 512, 2)
+        # self.Attention = nn.MultiheadAttention(embed_dim=768, num_heads=2, kdim=768, vdim=768)
 
         # self.AttentionES = Attention(config.hidden_size)
         # self.AttentionSE = Attention(config.hidden_size)
@@ -113,11 +113,11 @@ class QuestionAnswering(BertPreTrainedModel):
             Q_s = torch.stack([embeddings[i].index_select(dim=0, index=end[i]) for i in range(batchSize)], dim=0)
             Q_e = torch.stack([embeddings[i].index_select(dim=0, index=start[i]) for i in range(batchSize)], dim=0)
 
-            att, score = self.Attention(torch.concat([Q_s, Q_e], dim=1), bert_out)
-            lossES = loss_fct(score[0][:, :4, :].transpose(1, 2), starts)
-            lossSE = loss_fct(score[1][:, 4:, :].transpose(1, 2), ends[:, 1:])
+            att, score = self.Attention(Q_s+Q_e, bert_out)
+            lossES = loss_fct(score[0].transpose(1, 2), starts)
+            lossSE = loss_fct(score[1].transpose(1, 2), ends[:, 1:])
             loss = lossES + lossSE
-            return loss, None
+            return lossES, None
         att, score = self.Attention(embeddings, bert_out)
         ES_logits = torch.argmax(score[0], dim=2)
         SE_logits = torch.argmax(score[1], dim=2)

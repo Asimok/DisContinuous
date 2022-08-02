@@ -1,11 +1,9 @@
 import logging
 
 import torch
-from torch import nn, Tensor, binary_cross_entropy_with_logits
+from torch import nn, Tensor
 from torch.nn import CrossEntropyLoss, BCELoss
-from torch.nn.functional import binary_cross_entropy
-
-from multi_head_attention import MultiHeadAttention
+import torch.nn.functional as F
 from transformers import BertPreTrainedModel, BertModel
 
 logger = logging.getLogger(__name__)
@@ -38,8 +36,6 @@ class Attention(nn.Module):
         return attn_weights
 
 
-# 多头attention
-
 class Pointer(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -56,14 +52,10 @@ class QuestionAnswering(BertPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.bert = BertModel(config, add_pooling_layer=False)
-        # 多头attention
-        self.Attention = MultiHeadAttention(768, 768, 768, 2)
-        # self.AttentionSE = nn.MultiheadAttention(config.hidden_size, 2)
-
-        # self.AttentionES = Attention(config.hidden_size)
-        # self.AttentionSE = Attention(config.hidden_size)
+        self.AttentionES = Attention(config.hidden_size)
+        self.AttentionSE = Attention(config.hidden_size)
         # self.Pointer = Pointer(config)
-        # self.qa_outputs = nn.Linear(config.hidden_size, 2)
+
         self.init_weights()
 
     def forward(self,
@@ -78,14 +70,8 @@ class QuestionAnswering(BertPreTrainedModel):
                              attention_mask=attention_mask,
                              token_type_ids=token_type_ids,
                              )[0]
+        # embeddings = self.bert.embeddings(input_ids)
         embeddings = bert_out
-        # att, score = self.Attention(embeddings, bert_out)
-        # logits = self.qa_outputs(att).softmax(dim=2)
-        # start_predict_logits, end_predict_logits = logits.split(1, dim=-1)
-        # start_predict_logits = start_predict_logits.squeeze(-1).sigmoid()
-        # end_predict_logits = end_predict_logits.squeeze(-1).sigmoid()
-
-        total_loss = None
 
         if starts is not None:
             # If we are on multi-GPU, split add a dimension
@@ -95,30 +81,26 @@ class QuestionAnswering(BertPreTrainedModel):
                 ends = ends.squeeze(-1)
             if len(masks.size()) > 1:
                 masks = masks.squeeze(-1)
-            batchSize = ends.size(0)
-            start = starts * masks
-            end = ends[:, :-1] * masks
-            # Q_s = torch.stack([start_predict_logits[i].index_select(dim=0, index=start[i]) for i in range(batchSize)],
-            #                   dim=0).squeeze()
-            #
-            # Q_e = torch.stack([end_predict_logits[i].index_select(dim=0, index=end[i]) for i in range(batchSize)],
-            #                   dim=0).squeeze()
-            # loss_fct = binary_cross_entropy
-            # start_loss = loss_fct(Q_s.float(), torch.where(starts > 0, 1, 0).float())
-            # end_loss = loss_fct(Q_e.float(), torch.where(ends[:, 1:] > 0, 1, 0).float())
-            # total_loss = (start_loss + end_loss) / 2
 
+            batchSize = ends.size(0)
             loss_fct = CrossEntropyLoss()
             # E-S
-            Q_s = torch.stack([embeddings[i].index_select(dim=0, index=end[i]) for i in range(batchSize)], dim=0)
-            Q_e = torch.stack([embeddings[i].index_select(dim=0, index=start[i]) for i in range(batchSize)], dim=0)
-
-            att, score = self.Attention(torch.concat([Q_s, Q_e], dim=1), bert_out)
-            lossES = loss_fct(score[0][:, :4, :].transpose(1, 2), starts)
-            lossSE = loss_fct(score[1][:, 4:, :].transpose(1, 2), ends[:, 1:])
+            end = ends[:, :-1] * masks
+            Q = torch.stack([embeddings[i].index_select(dim=0, index=end[i]) for i in range(batchSize)], dim=0)
+            attentionES = self.AttentionES(Q, bert_out)
+            lossES = loss_fct(attentionES.transpose(1, 2), starts)
+            # S-E
+            start = starts * masks
+            Q = torch.stack([embeddings[i].index_select(dim=0, index=start[i]) for i in range(batchSize)], dim=0)
+            attentionSE = self.AttentionSE(Q, bert_out)
+            lossSE = loss_fct(attentionSE.transpose(1, 2), ends[:, 1:])
             loss = lossES + lossSE
             return loss, None
-        att, score = self.Attention(embeddings, bert_out)
-        ES_logits = torch.argmax(score[0], dim=2)
-        SE_logits = torch.argmax(score[1], dim=2)
+
+        attentionES = self.AttentionES(embeddings, bert_out)
+        attentionSE = self.AttentionSE(embeddings, bert_out)
+
+        # todo 改这个地方，保证结果有效
+        ES_logits = torch.argmax(attentionES, dim=2)
+        SE_logits = torch.argmax(attentionSE, dim=2)
         return None, ES_logits, SE_logits

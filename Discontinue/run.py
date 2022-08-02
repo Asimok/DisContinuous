@@ -268,8 +268,8 @@ if __name__ == '__main__':
 
     if not os.path.isdir(args.datasetPath):
         exit("datasetPath IS NOT A DIRCTIONARY. " + args.datasetPath)
-    if not os.path.isdir(args.modelPath):
-        exit("modelPath IS NOT A DIRCTIONARY. " + args.modelPath)
+    # if not os.path.isdir(args.modelPath):
+    #     exit("modelPath IS NOT A DIRCTIONARY. " + args.modelPath)
     if not os.path.isdir(args.tempPath):
         exit("tempPath IS NOT A DIRCTIONARY. " + args.tempPath)
 

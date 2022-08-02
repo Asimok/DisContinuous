@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm
 from transformers import AutoConfig, AdamW, get_linear_schedule_with_warmup
 
+from baseline.getResults import predictAll
 from dataLoader import load_dataset
 from evaluate import evaluateAll
 from getResults import perResults, disContinuousPredict
@@ -81,7 +82,8 @@ def train(args):
     logger.info("Num examples = %d", len(dataset))
     logger.info("Num Epochs = %d", args.num_train_epochs)
     logger.info("Instantaneous batch size per GPU = %d", args.per_gpu_batch_size)
-    logger.info("Total train batch size (w. parallel, distributed & accumulation) = %d", args.batch_size * args.gradient_accumulation_steps)
+    logger.info("Total train batch size (w. parallel, distributed & accumulation) = %d",
+                args.batch_size * args.gradient_accumulation_steps)
     logger.info("Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
     logger.info("Total optimization steps = %d", t_total)
 
@@ -147,6 +149,7 @@ def train(args):
         logger.info("Saving model checkpoint to %s", savePath)
 
         test(args, model, savedir="epoch-{}".format(epoch))
+
 
 
 def test(args, model=None, savedir=""):
@@ -226,7 +229,8 @@ if __name__ == '__main__':
     parser.add_argument('--do_train', action="store_true")
     parser.add_argument('--do_test', action="store_true")
     parser.add_argument('--threePoint', action="store_true")
-    parser.add_argument("--overwrite_cache", action="store_true", help="Overwrite the cached training and evaluation sets")
+    parser.add_argument("--overwrite_cache", action="store_true",
+                        help="Overwrite the cached training and evaluation sets")
     parser.add_argument('--datasetPath', type=str, required=True)
     parser.add_argument('--trainFile', type=str)
     parser.add_argument('--testFile', type=str)
@@ -269,8 +273,8 @@ if __name__ == '__main__':
 
     if not os.path.isdir(args.datasetPath):
         exit("datasetPath IS NOT A DIRCTIONARY. " + args.datasetPath)
-    if not os.path.isdir(args.modelPath):
-        exit("modelPath IS NOT A DIRCTIONARY. " + args.modelPath)
+    # if not os.path.isdir(args.modelPath):
+    #     exit("modelPath IS NOT A DIRCTIONARY. " + args.modelPath)
     if not os.path.isdir(args.tempPath):
         exit("tempPath IS NOT A DIRCTIONARY. " + args.tempPath)
 

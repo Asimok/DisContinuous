@@ -32,7 +32,6 @@ def perResults(P_logit, C_logit, qLen, pLen, selects=None, slide=0) -> [int, int
     if start != -1:
         temp.append([start - qLen + slide, end - qLen + slide])
 
-
     start, end = -1, -1
     for i in range(qLen, qLen + pLen):
         if C_logit[i] == 0:
@@ -58,7 +57,11 @@ def disContinuousPredict(document, document_offset, selects, maxPiece=5, pieceRa
     '''
     temp_prediction = []
     for start, end in selects:
-        assert end < len(document_offset), (start, end, len(document_offset), selects, document_offset)
+        # assert end < len(document_offset), (start, end, len(document_offset), selects, document_offset)
+        if end == len(document_offset):
+            end -= 1
+        if start == len(document_offset):
+            start -= 1
         start_offset = document_offset[start][0]
         end_offset = document_offset[end][1]
         answer = document[start_offset:end_offset]

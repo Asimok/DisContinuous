@@ -53,6 +53,7 @@ def load_dataset(args, evaluate=False):
         args.modelPath.strip('/').split("/")[-1],
     )
     temp_file = os.path.join(args.tempPath, temp_file)
+    print(temp_file)
     if os.path.exists(temp_file) and not args.overwrite_cache:
         logger.info("Loading dataset from cached file %s", temp_file)
         dataset_and_examples = torch.load(temp_file)

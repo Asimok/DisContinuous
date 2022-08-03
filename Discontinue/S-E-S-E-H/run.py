@@ -1,3 +1,5 @@
+import sys
+sys.path.append('/data2/maqi/DisContinuous/Discontinue/S-E-S-E-H')
 import argparse
 import json
 import logging
@@ -11,7 +13,6 @@ from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm
 from transformers import AutoConfig, AdamW, get_linear_schedule_with_warmup
 
-from baseline.getResults import predictAll
 from dataLoader import load_dataset
 from evaluate import evaluateAll
 from getResults import perResults, disContinuousPredict
@@ -19,7 +20,6 @@ from QA_model import QuestionAnswering
 
 logger = logging.getLogger(__name__)
 
-import sys
 
 sys.setrecursionlimit(10000)  # 防止Rouge计算深度爆炸
 
